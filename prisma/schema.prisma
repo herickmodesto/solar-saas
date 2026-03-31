@@ -1,0 +1,279 @@
+generator client {
+  provider        = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────
+// USUÁRIOS & AUTENTICAÇÃO
+// ─────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  passwordHash  String?
+  provider      String    @default("credentials")
+  phone         String?
+  companyName   String?
+  companyCnpj   String?
+  avatarUrl     String?
+  emailVerified Boolean   @default(false)
+  role          Role      @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  subscription        Subscription?
+  clients             Client[]
+  proposals           Proposal[]
+  calculations        Calculation[]
+  reports             MonthlyReport[]
+  files               UploadedFile[]
+  verificationTokens  VerificationToken[]
+
+  @@map("users")
+}
+
+model VerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code      String   // 4-digit OTP (hashed)
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("verification_tokens")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+// ─────────────────────────────────────────────
+// ASSINATURAS & PAGAMENTOS
+// ─────────────────────────────────────────────
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  userId               String             @unique
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  plan                 PlanType
+  status               SubscriptionStatus @default(TRIAL)
+  trialEndsAt          DateTime?
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+
+  abacatepayBillingId  String?
+  abacatepayCustomerId String?
+
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@map("subscriptions")
+}
+
+enum PlanType {
+  PROPOSTA
+  PRO
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+// ─────────────────────────────────────────────
+// CLIENTES
+// ─────────────────────────────────────────────
+
+model Client {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name           String
+  email          String?
+  cpf            String?
+  phone          String?
+
+  address        String?
+  city           String?
+  state          String?
+  zipCode        String?
+
+  companyName    String?
+  companyCnpj    String?
+  companyContact String?
+
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  proposals      Proposal[]
+  calculations   Calculation[]
+  reports        MonthlyReport[]
+
+  @@map("clients")
+}
+
+// ─────────────────────────────────────────────
+// PROPOSTAS COMERCIAIS
+// ─────────────────────────────────────────────
+
+model Proposal {
+  id                    String         @id @default(cuid())
+  userId                String
+  user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId              String
+  client                Client         @relation(fields: [clientId], references: [id])
+
+  proposalNumber        String         @unique
+
+  numModules            Int
+  modulePower           Float
+  systemKwp             Float
+  monthlyGenKwh         Float
+  requiredAreaM2        Float?
+
+  investmentValue       Float
+  monthlyConsumptionKwh Float
+  currentEnergyCost     Float
+  tariffDiscount        Float
+  inflationRate         Float
+  monthlyEconomy        Float
+  paybackMonths         Int
+  savings25y            Float
+
+  modulesBrand          String?
+  modulesModel          String?
+  inverterBrand         String?
+  inverterModel         String?
+  inverterQuantity      Int?
+
+  co2TonsAvoided        Float?
+  treesSaved            Int?
+  kmEquivalent          Float?
+
+  status                ProposalStatus @default(DRAFT)
+  pdfUrl                String?
+  validUntil            DateTime?
+  notes                 String?
+
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  @@map("proposals")
+}
+
+enum ProposalStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+// ─────────────────────────────────────────────
+// CÁLCULOS DE ALUGUEL (GD)
+// ─────────────────────────────────────────────
+
+model Calculation {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId        String?
+  client          Client?   @relation(fields: [clientId], references: [id])
+
+  teRate          Float
+  tusdRate        Float
+  tusdFioBRate    Float
+  pisRate         Float
+  cofinsRate      Float
+  icmsRate        Float
+
+  referenceMonth  DateTime
+  consumedKwh     Float
+  compensatedKwh  Float
+  tariffDiscount  Float
+  gdTaxYear       Int
+
+  costWithout     Float
+  costWith        Float
+  rentValue       Float
+  savings         Float
+
+  co2Avoided      Float?
+  treesSaved      Int?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("calculations")
+}
+
+// ─────────────────────────────────────────────
+// ANÁLISE MENSAL
+// ─────────────────────────────────────────────
+
+model MonthlyReport {
+  id          String               @id @default(cuid())
+  userId      String
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId    String?
+  client      Client?              @relation(fields: [clientId], references: [id])
+
+  title       String
+  systemName  String?
+  periodStart DateTime
+  periodEnd   DateTime
+
+  entries     MonthlyReportEntry[]
+
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@map("monthly_reports")
+}
+
+model MonthlyReportEntry {
+  id              String        @id @default(cuid())
+  reportId        String
+  report          MonthlyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  month           DateTime
+  consumedKwh     Float
+  compensatedKwh  Float
+  billValue       Float
+  rentValue       Float
+
+  @@map("monthly_report_entries")
+}
+
+// ─────────────────────────────────────────────
+// ARQUIVOS ENVIADOS
+// ─────────────────────────────────────────────
+
+model UploadedFile {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name        String
+  size        Int
+  mimeType    String
+  storagePath String
+  url         String?
+
+  createdAt   DateTime @default(now())
+
+  @@map("uploaded_files")
+}
