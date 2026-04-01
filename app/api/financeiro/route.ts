@@ -35,7 +35,7 @@ export const GET = withErrorHandler(async () => {
     monthlyRevenue[key] = { paid: 0, pending: 0, overdue: 0 };
   }
 
-  invoices.forEach((inv) => {
+  invoices.forEach((inv: { referenceMonth: Date; amount: number; status: string }) => {
     const d = new Date(inv.referenceMonth);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     if (!(key in monthlyRevenue)) return;
