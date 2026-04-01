@@ -1,6 +1,8 @@
 import { requireAuth, withErrorHandler } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+type InvoiceRow = { amount: number; status: string; paidAt: Date | null; referenceMonth: Date; dueDate: Date };
+
 // GET /api/financeiro — resumo financeiro dos últimos 12 meses
 export const GET = withErrorHandler(async () => {
   const user = await requireAuth();
@@ -35,7 +37,7 @@ export const GET = withErrorHandler(async () => {
     monthlyRevenue[key] = { paid: 0, pending: 0, overdue: 0 };
   }
 
-  invoices.forEach((inv: { referenceMonth: Date; amount: number; status: string }) => {
+  (invoices as InvoiceRow[]).forEach((inv) => {
     const d = new Date(inv.referenceMonth);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     if (!(key in monthlyRevenue)) return;
@@ -54,9 +56,10 @@ export const GET = withErrorHandler(async () => {
     }));
 
   // Totais gerais
-  const totalPaid = invoices.filter((i) => i.status === "PAID").reduce((s, i) => s + i.amount, 0);
-  const totalPending = invoices.filter((i) => ["PENDING", "SENT"].includes(i.status)).reduce((s, i) => s + i.amount, 0);
-  const totalOverdue = invoices.filter((i) => i.status === "OVERDUE").reduce((s, i) => s + i.amount, 0);
+  const typedInvoices = invoices as InvoiceRow[];
+  const totalPaid = typedInvoices.filter((i) => i.status === "PAID").reduce((s, i) => s + i.amount, 0);
+  const totalPending = typedInvoices.filter((i) => ["PENDING", "SENT"].includes(i.status)).reduce((s, i) => s + i.amount, 0);
+  const totalOverdue = typedInvoices.filter((i) => i.status === "OVERDUE").reduce((s, i) => s + i.amount, 0);
 
   return Response.json({
     summary: {
