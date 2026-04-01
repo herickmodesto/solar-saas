@@ -106,5 +106,10 @@ export const authOptions: NextAuthOptions = {
       }
       return session;
     },
+    async redirect({ url, baseUrl }) {
+      // Default: send to dashboard if going to root/sign-in callback
+      if (url === baseUrl || url === `${baseUrl}/`) return `${baseUrl}/dashboard`;
+      return url.startsWith(baseUrl) ? url : baseUrl;
+    },
   },
 };

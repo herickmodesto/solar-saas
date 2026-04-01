@@ -21,15 +21,8 @@ export default function EsqueciSenhaPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Erro ao enviar e-mail.");
-      // Se o e-mail não existir, a API retorna ok:true mas sem userId (para não revelar se o e-mail existe)
-      // Nesse caso mostramos mensagem genérica sem redirecionar
-      if (!data.userId) {
-        setError("Se este e-mail estiver cadastrado, você receberá um código em breve.");
-        return;
-      }
-      router.push(
-        `/redefinir-senha?userId=${data.userId}&email=${encodeURIComponent(data.email)}`
-      );
+      // Sempre mostra mensagem genérica — o link com userId vai no email, não na resposta HTTP
+      setError("Se este e-mail estiver cadastrado, você receberá um código em breve. Verifique sua caixa de entrada.");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro desconhecido.");
     } finally {

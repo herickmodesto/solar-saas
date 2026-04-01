@@ -12,7 +12,7 @@ export interface UserProfile {
   companyName?: string | null;
   companyCnpj?: string | null;
   avatarUrl?: string | null;
-  role: "USER" | "ADMIN";
+  role: "USER" | "ADMIN" | "CLIENT";
   subscription?: SubscriptionInfo | null;
   createdAt: string;
 }
@@ -146,6 +146,66 @@ export interface MonthlyReport {
   periodEnd: string;
   entries: MonthlyReportEntry[];
   createdAt: string;
+}
+
+// ── Usinas (Plantas Solares) ──────────────────────────────────
+
+export type PlantStatus = "NORMAL" | "ALERT" | "CRITICAL" | "UNKNOWN" | "OFFLINE";
+
+export interface PlantDevice {
+  id: string;
+  plantId: string;
+  serialNumber: string;
+  model?: string | null;
+  brand: string;
+  status?: string | null;
+  currentKw?: number | null;
+  lastSyncAt?: string | null;
+  createdAt: string;
+}
+
+export interface PlantAlert {
+  id: string;
+  plantId: string;
+  alertType: string;
+  message: string;
+  deviceSn?: string | null;
+  isResolved: boolean;
+  occurredAt: string;
+  resolvedAt?: string | null;
+  createdAt: string;
+}
+
+export interface Plant {
+  id: string;
+  userId: string;
+  clientId?: string | null;
+  client?: Pick<Client, "id" | "name" | "city" | "state"> | null;
+  growattPlantId?: string | null;
+  name: string;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  systemKwp?: number | null;
+  installDate?: string | null;
+  status: PlantStatus;
+  lastSyncAt?: string | null;
+  devices?: PlantDevice[];
+  alerts?: PlantAlert[];
+  _count?: { devices: number; alerts: number };
+  createdAt: string;
+}
+
+export interface PlantMonitoring {
+  plantId: string;
+  currentKw: number;
+  todayKwh: number;
+  monthKwh: number;
+  yearKwh: number;
+  totalKwh: number;
+  syncedAt: string;
 }
 
 // ── API Responses genéricos ───────────────────────────────────

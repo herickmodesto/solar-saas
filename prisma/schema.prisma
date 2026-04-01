@@ -25,13 +25,19 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  subscription        Subscription?
-  clients             Client[]
-  proposals           Proposal[]
-  calculations        Calculation[]
-  reports             MonthlyReport[]
-  files               UploadedFile[]
-  verificationTokens  VerificationToken[]
+  subscription           Subscription?
+  clients                Client[]
+  proposals              Proposal[]
+  calculations           Calculation[]
+  reports                MonthlyReport[]
+  files                  UploadedFile[]
+  verificationTokens     VerificationToken[]
+  plants                 Plant[]
+  invoices               Invoice[]
+  contracts              Contract[]
+  tickets                Ticket[]
+  monitoringCredentials  MonitoringCredential[]
+  notifications          Notification[]
 
   @@map("users")
 }
@@ -51,6 +57,7 @@ model VerificationToken {
 enum Role {
   USER
   ADMIN
+  CLIENT
 }
 
 // ─────────────────────────────────────────────
@@ -115,12 +122,17 @@ model Client {
   companyContact String?
 
   notes          String?
+  portalUserId   String?   @unique  // User.id do portal do cliente (role=CLIENT)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
   proposals      Proposal[]
   calculations   Calculation[]
   reports        MonthlyReport[]
+  plants         Plant[]
+  invoices       Invoice[]
+  contracts      Contract[]
+  tickets        Ticket[]
 
   @@map("clients")
 }
@@ -276,4 +288,285 @@ model UploadedFile {
   createdAt   DateTime @default(now())
 
   @@map("uploaded_files")
+}
+
+// ─────────────────────────────────────────────
+// USINAS (PLANTAS SOLARES)
+// ─────────────────────────────────────────────
+
+model Plant {
+  id               String           @id @default(cuid())
+  userId           String
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId         String?
+  client           Client?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  growattPlantId   String?
+  externalPlantId  String?
+  inverterProvider InverterProvider @default(GROWATT)
+  name             String
+  address          String?
+  city             String?
+  state            String?
+  latitude         Float?
+  longitude        Float?
+  systemKwp        Float?
+  installDate      DateTime?
+  status           PlantStatus      @default(UNKNOWN)
+  lastSyncAt       DateTime?
+
+  devices          PlantDevice[]
+  alerts           PlantAlert[]
+  energyLogs       PlantEnergyLog[]
+  invoices         Invoice[]
+
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@map("plants")
+}
+
+model PlantEnergyLog {
+  id          String   @id @default(cuid())
+  plantId     String
+  plant       Plant    @relation(fields: [plantId], references: [id], onDelete: Cascade)
+
+  date        DateTime // dia do snapshot (sem hora)
+  currentKw   Float    @default(0)
+  todayKwh    Float    @default(0)
+  monthKwh    Float    @default(0)
+  yearKwh     Float    @default(0)
+  totalKwh    Float    @default(0)
+
+  createdAt   DateTime @default(now())
+
+  @@unique([plantId, date])
+  @@map("plant_energy_logs")
+}
+
+model PlantDevice {
+  id           String   @id @default(cuid())
+  plantId      String
+  plant        Plant    @relation(fields: [plantId], references: [id], onDelete: Cascade)
+
+  serialNumber String
+  model        String?
+  brand        String   @default("Growatt")
+  status       String?
+  currentKw    Float?
+  lastSyncAt   DateTime?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("plant_devices")
+}
+
+model PlantAlert {
+  id          String   @id @default(cuid())
+  plantId     String
+  plant       Plant    @relation(fields: [plantId], references: [id], onDelete: Cascade)
+
+  alertType   String   // FAULT | WARNING | INFO
+  message     String
+  deviceSn    String?
+  isResolved  Boolean  @default(false)
+  occurredAt  DateTime
+  resolvedAt  DateTime?
+
+  createdAt   DateTime @default(now())
+
+  @@map("plant_alerts")
+}
+
+enum PlantStatus {
+  NORMAL
+  ALERT
+  CRITICAL
+  UNKNOWN
+  OFFLINE
+}
+
+enum InverterProvider {
+  GROWATT
+  SOLIS
+  DEYE
+  FRONIUS
+  HUAWEI_FUSIONSOLAR
+  WEG
+  ABB
+  SOFAR
+  GOODWE
+  SUNGROW
+  SOLPLANET
+  HOYMILES
+  NEP
+  SOLARMAN
+  ELEKEEPER
+  KEHUA
+  INTELBRAS
+  CHINT
+  CUSTOM
+}
+
+// ─────────────────────────────────────────────
+// CREDENCIAIS DE MONITORAMENTO
+// ─────────────────────────────────────────────
+
+model MonitoringCredential {
+  id          String           @id @default(cuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider    InverterProvider
+  username    String?
+  password    String?
+  apiKey      String?
+  apiSecret   String?
+  serverUrl   String?
+  isActive    Boolean          @default(true)
+  lastTestAt  DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@map("monitoring_credentials")
+}
+
+// ─────────────────────────────────────────────
+// FINANCEIRO — FATURAS & CONTRATOS
+// ─────────────────────────────────────────────
+
+model Invoice {
+  id                   String        @id @default(cuid())
+  userId               String
+  user                 User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId             String
+  client               Client        @relation(fields: [clientId], references: [id])
+  plantId              String?
+  plant                Plant?        @relation(fields: [plantId], references: [id], onDelete: SetNull)
+
+  referenceMonth       DateTime
+  amount               Float
+  status               InvoiceStatus @default(PENDING)
+  dueDate              DateTime
+  paidAt               DateTime?
+  abacatepayBillingId  String?
+  pixCode              String?
+  pixQrCode            String?
+  notes                String?
+
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  @@map("invoices")
+}
+
+enum InvoiceStatus {
+  PENDING
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+model Contract {
+  id               String         @id @default(cuid())
+  userId           String
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId         String
+  client           Client         @relation(fields: [clientId], references: [id])
+  plantId          String?
+
+  title            String
+  startDate        DateTime
+  endDate          DateTime?
+  monthlyAmount    Float
+  adjustmentIndex  String?
+  pdfUrl           String?
+  signedAt         DateTime?
+  status           ContractStatus @default(ACTIVE)
+
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@map("contracts")
+}
+
+enum ContractStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  PENDING_SIGNATURE
+}
+
+// ─────────────────────────────────────────────
+// SUPORTE — TICKETS
+// ─────────────────────────────────────────────
+
+model Ticket {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId    String?
+  client      Client?        @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  plantId     String?
+
+  title       String
+  description String
+  status      TicketStatus   @default(OPEN)
+  priority    TicketPriority @default(MEDIUM)
+  category    String?
+  assignedTo  String?
+  resolvedAt  DateTime?
+
+  messages    TicketMessage[]
+
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@map("tickets")
+}
+
+model TicketMessage {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  content   String
+  isStaff   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("ticket_messages")
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+// ─────────────────────────────────────────────
+// NOTIFICAÇÕES IN-APP
+// ─────────────────────────────────────────────
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type      String   // ALERT | INVOICE | TICKET | SYSTEM
+  title     String
+  message   String
+  link      String?
+  read      Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
 }

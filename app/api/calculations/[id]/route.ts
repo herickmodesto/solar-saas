@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth, withErrorHandler, AuthError } from "@/lib/auth";
 
-type Ctx = { params: Promise<{ id: string }> };
+type Ctx = { params: Promise<Record<string, string>> };
 
 async function getOwned(userId: string, id: string) {
   const calc = await prisma.calculation.findFirst({ where: { id, userId } });

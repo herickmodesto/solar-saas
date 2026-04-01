@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth, withErrorHandler, parseBody, AuthError } from "@/lib/auth";
 
-type Ctx = { params: Promise<{ id: string }> };
+type Ctx = { params: Promise<Record<string, string>> };
 
 async function getOwnedProposal(userId: string, id: string) {
   const proposal = await prisma.proposal.findFirst({

@@ -10,7 +10,10 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export async function sendPasswordResetEmail(to: string, name: string, code: string) {
+export async function sendPasswordResetEmail(to: string, name: string, code: string, userId: string) {
+  const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+  const resetUrl = `${baseUrl}/redefinir-senha?userId=${userId}&email=${encodeURIComponent(to)}`;
+
   await transporter.sendMail({
     from: `"SolarPro" <${process.env.SMTP_FROM ?? process.env.SMTP_USER}>`,
     to,
@@ -32,12 +35,19 @@ export async function sendPasswordResetEmail(to: string, name: string, code: str
               <tr>
                 <td style="padding:40px;">
                   <p style="margin:0 0 8px;color:#1e3a5f;font-size:18px;font-weight:700;">Olá, ${name}!</p>
-                  <p style="margin:0 0 32px;color:#6b7280;font-size:14px;line-height:1.6;">
-                    Recebemos uma solicitação para redefinir sua senha. Use o código abaixo. Ele expira em <strong>10 minutos</strong>.
+                  <p style="margin:0 0 24px;color:#6b7280;font-size:14px;line-height:1.6;">
+                    Recebemos uma solicitação para redefinir sua senha. Use o código abaixo ou clique no botão. Expira em <strong>10 minutos</strong>.
                   </p>
                   <table width="100%" cellpadding="0" cellspacing="0">
                     <tr><td align="center" style="padding:24px;background:#fff7ed;border-radius:12px;">
                       <span style="letter-spacing:16px;font-size:40px;font-weight:800;color:#c2410c;font-family:monospace;">${code}</span>
+                    </td></tr>
+                  </table>
+                  <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px;">
+                    <tr><td align="center">
+                      <a href="${resetUrl}" style="display:inline-block;padding:12px 32px;background:#1e3a5f;color:#ffffff;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;">
+                        Redefinir senha
+                      </a>
                     </td></tr>
                   </table>
                   <p style="margin:32px 0 0;color:#9ca3af;font-size:12px;text-align:center;line-height:1.6;">

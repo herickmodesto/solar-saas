@@ -15,23 +15,28 @@ export async function POST(req: NextRequest) {
   try {
     const rawBody = await req.text();
 
-    // ── Verificação de assinatura HMAC ──────────────────────────────────
+    // ── Verificação de assinatura HMAC (obrigatória) ────────────────────
     const secret = process.env.ABACATEPAY_WEBHOOK_SECRET;
-    if (secret) {
-      const signature = req.headers.get("x-abacatepay-signature") ?? req.headers.get("x-webhook-signature");
-      if (!signature) {
-        console.warn("[webhook] Assinatura ausente no header.");
-        return Response.json({ error: "Assinatura inválida." }, { status: 401 });
-      }
-      const expected = crypto
-        .createHmac("sha256", secret)
-        .update(rawBody)
-        .digest("hex");
-      if (!crypto.timingSafeEqual(Buffer.from(signature, "hex"), Buffer.from(expected, "hex"))) {
-        console.warn("[webhook] Assinatura inválida.");
-        return Response.json({ error: "Assinatura inválida." }, { status: 401 });
-      }
+    if (!secret) {
+      console.error("[webhook] ABACATEPAY_WEBHOOK_SECRET não configurado — requisição rejeitada.");
+      return Response.json({ error: "Serviço indisponível." }, { status: 503 });
     }
+    const signature = req.headers.get("x-abacatepay-signature") ?? req.headers.get("x-webhook-signature");
+    if (!signature) {
+      console.warn("[webhook] Assinatura ausente no header.");
+      return Response.json({ error: "Assinatura inválida." }, { status: 401 });
+    }
+    const expected = crypto
+      .createHmac("sha256", secret)
+      .update(rawBody)
+      .digest("hex");
+    const sigBuf = Buffer.from(signature, "hex");
+    const expBuf = Buffer.from(expected, "hex");
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+      console.warn("[webhook] Assinatura inválida.");
+      return Response.json({ error: "Assinatura inválida." }, { status: 401 });
+    }
+    // ────────────────────────────────────────────────────────────────────
     // ────────────────────────────────────────────────────────────────────
 
     const payload = JSON.parse(rawBody);

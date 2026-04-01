@@ -40,11 +40,9 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  await sendPasswordResetEmail(user.email, user.name, code);
+  await sendPasswordResetEmail(user.email, user.name, code, user.id);
 
-  return NextResponse.json({
-    ok: true,
-    userId: user.id,
-    email: user.email,
-  });
+  // Não retornar userId nem email — evita enumeração de usuários e exposição de IDs internos
+  // O userId necessário para reset-password é enviado apenas pelo link no email
+  return NextResponse.json({ ok: true });
 }
